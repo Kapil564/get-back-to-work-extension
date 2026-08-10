@@ -271,24 +271,68 @@
     pauseAllVideos();
     createOverlay();
 
-    // Audio
+    // --- Audio: deferred until user gesture due to autoplay policies ---
     alarmAudio = new Audio(buildAudioUrl());
     alarmAudio.loop = true;
     alarmAudio.volume = Math.min(1, Math.max(0, settings.volume));
 
-    const play = () => {
+    function tryPlayAudio() {
+      if (!alarmAudio || !overlay) return;
       const p = alarmAudio.play();
       if (p && typeof p.catch === 'function') {
         p.catch((err) => {
-          console.warn('GetBackToWork: audio play blocked; attempting fallback siren.', err);
-          if (alarmAudio && buildAudioUrl() !== chrome.runtime.getURL('alarm.wav')) {
-            alarmAudio.src = chrome.runtime.getURL('alarm.wav');
-            alarmAudio.play().catch(() => {});
-          }
+          console.warn('GetBackToWork: audio play blocked; using silent visual fallback.', err);
         });
       }
-    };
-    play();
+    }
+
+    // Modern browsers (and Brave Shields) block autoplay without a user gesture.
+    // Try anyway in case the user already interacted with the page, but show a
+    // sound-on-demand button as the reliable path.
+    tryPlayAudio();
+
+    // --- Sound-on-demand button (works around autoplay blocks) ---
+    const card = overlay.querySelector('div');
+    if (card) {
+      const soundBtn = document.createElement('button');
+      soundBtn.textContent = '🔊 Sound the alarm';
+      soundBtn.id = 'gbw-sound-btn';
+      soundBtn.setAttribute(
+        'style',
+        [
+          'margin-top:1rem',
+          'padding:0.75rem 1.25rem',
+          'font-size:1rem',
+          'font-weight:700',
+          'border:none',
+          'border-radius:12px',
+          'cursor:pointer',
+          'background:#ffeb3b',
+          'color:#000',
+          'box-shadow:0 4px 0 #bfa600',
+          'transition:transform .05s, box-shadow .05s',
+        ].join(';')
+      );
+      soundBtn.addEventListener('click', () => {
+        tryPlayAudio();
+        soundBtn.style.display = 'none';
+      });
+      soundBtn.addEventListener('mousedown', () => {
+        soundBtn.style.transform = 'translateY(3px)';
+        soundBtn.style.boxShadow = '0 1px 0 #bfa600';
+      });
+      soundBtn.addEventListener('mouseup', () => {
+        soundBtn.style.transform = 'translateY(0)';
+        soundBtn.style.boxShadow = '0 4px 0 #bfa600';
+      });
+      card.appendChild(soundBtn);
+    }
+
+    // Global quick gesture: first click/press anywhere in overlay also starts sound.
+    overlay.addEventListener('pointerdown', function unlockAudio() {
+      tryPlayAudio();
+      overlay.removeEventListener('pointerdown', unlockAudio);
+    }, { once: true });
 
     // Visual
     const visualData = buildVisualData();
@@ -322,7 +366,7 @@
 
     // Ensure alarm keeps trying if it gets paused by browser policy
     alarmAudio.addEventListener('pause', () => {
-      if (alarmAudio && overlay) {
+      if (alarmAudio && overlay && !alarmAudio.ended && alarmAudio.currentTime > 0) {
         alarmAudio.play().catch(() => {});
       }
     });
