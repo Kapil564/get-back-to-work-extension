@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Get Back To Work</title>
+    <link rel="stylesheet" href="shared.css" />
+  </head>
+  <body class="popup-body">
+    <div class="panel">
+      <div class="header">
+        <span class="logo">🔥</span>
+        <h1>Get Back To Work</h1>
+      </div>
+
+      <label class="switch-large" for="enabledToggle">
+        <input type="checkbox" id="enabledToggle" />
+        <span class="slider"></span>
+        <span class="switch-label" id="enabledLabel">Enabled</span>
+      </label>
+
+      <div class="status" id="statusText" aria-live="polite">Loading…</div>
+
+      <div class="actions">
+        <a href="options.html" target="_blank" class="btn btn-secondary">Open Settings</a>
+        <button id="previewBtn" class="btn btn-primary">Preview Reminder</button>
+      </div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

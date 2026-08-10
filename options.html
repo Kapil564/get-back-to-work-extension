@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Get Back To Work — Settings</title>
+    <link rel="stylesheet" href="shared.css" />
+  </head>
+  <body class="options-body">
+    <div class="container">
+      <header>
+        <h1>⚡ Get Back To Work — Settings</h1>
+        <p>Configure the interrupt, media, and sensitivity.</p>
+      </header>
+
+      <form id="settingsForm">
+        <section>
+          <h2>General</h2>
+
+          <label class="field">
+            <span class="label">Enable extension</span>
+            <input type="checkbox" id="enabled" />
+          </label>
+
+          <label class="field">
+            <span class="label">Trigger interval (minutes)</span>
+            <input
+              type="number"
+              id="intervalMinutes"
+              min="1"
+              max="180"
+              required
+            />
+          </label>
+
+          <label class="field">
+            <span class="label">Headline text</span>
+            <input type="text" id="headline" maxlength="120" />
+          </label>
+
+          <label class="field">
+            <span class="label">Volume</span>
+            <input type="range" id="volume" min="0" max="1" step="0.05" />
+            <span class="hint" id="volumeValue">100%</span>
+          </label>
+        </section>
+
+        <section>
+          <h2>Audio Reminder</h2>
+
+          <label class="field">
+            <span class="label">Audio source</span>
+            <select id="audioMode">
+              <option value="default">Default alarm siren</option>
+              <option value="url">URL (direct link)</option>
+              <option value="upload">Upload audio file</option>
+            </select>
+          </label>
+
+          <div id="audioUrlWrap" class="conditional hidden">
+            <label class="field">
+              <span class="label">Audio URL</span>
+              <input type="url" id="audioUrl" placeholder="https://example.com/alarm.mp3" />
+              <span class="hint">Direct link to .wav, .mp3, .ogg, etc.</span>
+            </label>
+          </div>
+
+          <div id="audioUploadWrap" class="conditional hidden">
+            <label class="field">
+              <span class="label">Upload audio file</span>
+              <input type="file" id="audioFile" accept="audio/*" />
+              <span class="hint" id="audioFileName">No file selected</span>
+            </label>            
+          </div>
+        </section>
+
+        <section>
+          <h2>Visual Reminder</h2>
+
+          <label class="field">
+            <span class="label">Visual media</span>
+            <select id="visualMode">
+              <option value="default">Text only</option>
+              <option value="url">URL (direct link)</option>
+              <option value="upload">Upload video/GIF file</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="label">Visual kind</span>
+            <select id="visualKind">
+              <option value="video">Video</option>
+              <option value="gif">GIF / image</option>
+            </select>
+          </label>
+
+          <div id="visualUrlWrap" class="conditional hidden">
+            <label class="field">
+              <span class="label">Visual URL</span>
+              <input type="url" id="visualUrl" placeholder="https://example.com/reminder.mp4" />
+              <span class="hint">Direct link to .mp4, .webm, .gif, .webp, etc.</span>
+            </label>
+          </div>
+
+          <div id="visualUploadWrap" class="conditional hidden">
+            <label class="field">
+              <span class="label">Upload visual file</span>
+              <input type="file" id="visualFile" accept="video/*,image/*" />
+              <span class="hint" id="visualFileName">No file selected</span>
+            </label>
+          </div>
+        </section>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Save Settings</button>
+          <button type="button" id="previewBtn" class="btn btn-secondary">Preview Reminder</button>
+        </div>
+      </form>
+
+      <div id="saveFeedback" class="feedback" role="status" aria-live="polite"></div>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>

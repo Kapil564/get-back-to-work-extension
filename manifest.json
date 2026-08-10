@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Get Back To Work",
+  "version": "1.1.0",
+  "description": "Detect video watching on YouTube/Instagram and interrupt with a loud reminder.",
+  "permissions": ["storage", "unlimitedStorage", "activeTab"],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "*://*.instagram.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Get Back To Work",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.youtube.com/*",
+        "*://*.instagram.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["alarm.wav"],
+      "matches": ["*://*.youtube.com/*", "*://*.instagram.com/*"]
+    }
+  ]
+}
