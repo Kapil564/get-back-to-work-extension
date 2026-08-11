@@ -15,6 +15,8 @@
     visualKind: 'video',
   };
 
+  const REPO_URL = 'https://github.com/Kapil564/get-back-to-work-extension';
+
   const fields = {
     enabled: document.getElementById('enabled'),
     intervalMinutes: document.getElementById('intervalMinutes'),
@@ -37,7 +39,28 @@
     form: document.getElementById('settingsForm'),
     previewBtn: document.getElementById('previewBtn'),
     feedback: document.getElementById('saveFeedback'),
+    errorReport: document.getElementById('errorReport'),
+    errorSummary: document.getElementById('errorSummary'),
+    errorLink: document.getElementById('errorLink'),
+    clearError: document.getElementById('clearError'),
   };
+
+  function captureError(context, err) {
+    try {
+      const payload = {
+        lastError: {
+          context,
+          message: err && err.message ? err.message : String(err),
+          stack: err && err.stack ? err.stack : '',
+          url: typeof location !== 'undefined' ? location.href : '',
+          time: Date.now(),
+        },
+      };
+      chrome.storage.local.set(payload).catch(() => {});
+    } catch (_) {
+      // ignore
+    }
+  }
 
   function showFeedback(text, type) {
     fields.feedback.textContent = text;
@@ -64,26 +87,67 @@
     fields.visualUploadWrap.classList.toggle('hidden', fields.visualMode.value !== 'upload');
   }
 
+  function buildIssueUrl(err) {
+    const title = encodeURIComponent(`[Bug] ${err.context}: ${err.message}`);
+    const bodyLines = [
+      '## Error report',
+      '',
+      `- **Context:** ${err.context}`,
+      `- **Message:** ${err.message}`,
+      `- **Page:** ${err.url || 'N/A'}`,
+      `- **Time:** ${err.time ? new Date(err.time).toISOString() : 'N/A'}`,
+      '',
+      '### Stack trace',
+      '```',
+      err.stack || 'No stack trace available',
+      '```',
+      '',
+      '> I will fix this in a later version. Thank you for reporting!',
+    ];
+    const body = encodeURIComponent(bodyLines.join('\n'));
+    return `${REPO_URL}/issues/new?title=${title}&body=${body}`;
+  }
+
   async function loadSettings() {
-    const saved = await chrome.storage.local.get(DEFAULTS);
-    const s = { ...DEFAULTS, ...saved };
+    try {
+      const saved = await chrome.storage.local.get(DEFAULTS);
+      const s = { ...DEFAULTS, ...saved };
 
-    fields.enabled.checked = s.enabled;
-    fields.intervalMinutes.value = s.intervalMinutes;
-    fields.headline.value = s.headline;
-    fields.volume.value = s.volume;
-    fields.volumeValue.textContent = `${Math.round(s.volume * 100)}%`;
+      fields.enabled.checked = s.enabled;
+      fields.intervalMinutes.value = s.intervalMinutes;
+      fields.headline.value = s.headline;
+      fields.volume.value = s.volume;
+      fields.volumeValue.textContent = `${Math.round(s.volume * 100)}%`;
 
-    fields.audioMode.value = s.audioMode;
-    fields.audioUrl.value = s.audioUrl || '';
-    fields.audioFileName.textContent = s.audioData ? 'File stored in extension storage' : 'No file selected';
+      fields.audioMode.value = s.audioMode;
+      fields.audioUrl.value = s.audioUrl || '';
+      fields.audioFileName.textContent = s.audioData ? 'File stored in extension storage' : 'No file selected';
 
-    fields.visualMode.value = s.visualMode;
-    fields.visualKind.value = s.visualKind;
-    fields.visualUrl.value = s.visualUrl || '';
-    fields.visualFileName.textContent = s.visualData ? 'File stored in extension storage' : 'No file selected';
+      fields.visualMode.value = s.visualMode;
+      fields.visualKind.value = s.visualKind;
+      fields.visualUrl.value = s.visualUrl || '';
+      fields.visualFileName.textContent = s.visualData ? 'File stored in extension storage' : 'No file selected';
 
-    updateConditionals();
+      updateConditionals();
+    } catch (e) {
+      captureError('options.loadSettings', e);
+    }
+  }
+
+  async function renderErrorReport() {
+    try {
+      const res = await chrome.storage.local.get('lastError');
+      const err = res.lastError;
+      if (!err) {
+        fields.errorReport.classList.add('hidden');
+        return;
+      }
+      fields.errorReport.classList.remove('hidden');
+      fields.errorSummary.textContent = `${err.context}: ${err.message}`;
+      fields.errorLink.href = buildIssueUrl(err);
+    } catch (e) {
+      captureError('options.renderErrorReport', e);
+    }
   }
 
   fields.audioMode.addEventListener('change', updateConditionals);
@@ -96,70 +160,87 @@
   fields.form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const payload = {
-      enabled: fields.enabled.checked,
-      intervalMinutes: Math.max(1, Math.min(180, parseInt(fields.intervalMinutes.value, 10) || 15)),
-      headline: fields.headline.value.trim() || DEFAULTS.headline,
-      volume: parseFloat(fields.volume.value),
-      audioMode: fields.audioMode.value,
-      visualMode: fields.visualMode.value,
-      visualKind: fields.visualKind.value,
-    };
+    try {
+      const payload = {
+        enabled: fields.enabled.checked,
+        intervalMinutes: Math.max(1, Math.min(180, parseInt(fields.intervalMinutes.value, 10) || 15)),
+        headline: fields.headline.value.trim() || DEFAULTS.headline,
+        volume: parseFloat(fields.volume.value),
+        audioMode: fields.audioMode.value,
+        visualMode: fields.visualMode.value,
+        visualKind: fields.visualKind.value,
+      };
 
-    if (payload.audioMode === 'url') {
-      payload.audioUrl = fields.audioUrl.value.trim();
-      payload.audioData = '';
-    } else if (payload.audioMode === 'upload') {
-      payload.audioUrl = '';
-      if (fields.audioFile.files && fields.audioFile.files[0]) {
-        payload.audioData = await readFileAsBase64(fields.audioFile.files[0]);
+      if (payload.audioMode === 'url') {
+        payload.audioUrl = fields.audioUrl.value.trim();
+        payload.audioData = '';
+      } else if (payload.audioMode === 'upload') {
+        payload.audioUrl = '';
+        if (fields.audioFile.files && fields.audioFile.files[0]) {
+          payload.audioData = await readFileAsBase64(fields.audioFile.files[0]);
+        } else {
+          const saved = await chrome.storage.local.get('audioData');
+          payload.audioData = saved.audioData || '';
+        }
       } else {
-        // keep existing upload if unchanged
-        const saved = await chrome.storage.local.get('audioData');
-        payload.audioData = saved.audioData || '';
+        payload.audioUrl = '';
+        payload.audioData = '';
       }
-    } else {
-      payload.audioUrl = '';
-      payload.audioData = '';
-    }
 
-    if (payload.visualMode === 'url') {
-      payload.visualUrl = fields.visualUrl.value.trim();
-      payload.visualData = '';
-    } else if (payload.visualMode === 'upload') {
-      payload.visualUrl = '';
-      if (fields.visualFile.files && fields.visualFile.files[0]) {
-        payload.visualData = await readFileAsBase64(fields.visualFile.files[0]);
+      if (payload.visualMode === 'url') {
+        payload.visualUrl = fields.visualUrl.value.trim();
+        payload.visualData = '';
+      } else if (payload.visualMode === 'upload') {
+        payload.visualUrl = '';
+        if (fields.visualFile.files && fields.visualFile.files[0]) {
+          payload.visualData = await readFileAsBase64(fields.visualFile.files[0]);
+        } else {
+          const saved = await chrome.storage.local.get('visualData');
+          payload.visualData = saved.visualData || '';
+        }
       } else {
-        const saved = await chrome.storage.local.get('visualData');
-        payload.visualData = saved.visualData || '';
+        payload.visualUrl = '';
+        payload.visualData = '';
       }
-    } else {
-      payload.visualUrl = '';
-      payload.visualData = '';
+
+      await chrome.storage.local.set(payload);
+      showFeedback('Settings saved.', 'success');
+
+      fields.audioFileName.textContent = payload.audioData ? 'File stored in extension storage' : 'No file selected';
+      fields.visualFileName.textContent = payload.visualData ? 'File stored in extension storage' : 'No file selected';
+    } catch (e) {
+      captureError('options.form.submit', e);
+      showFeedback('Failed to save settings.', 'error');
     }
-
-    await chrome.storage.local.set(payload);
-    showFeedback('Settings saved.', 'success');
-
-    // refresh display labels
-    fields.audioFileName.textContent = payload.audioData ? 'File stored in extension storage' : 'No file selected';
-    fields.visualFileName.textContent = payload.visualData ? 'File stored in extension storage' : 'No file selected';
   });
 
   fields.previewBtn.addEventListener('click', async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.id) {
-      showFeedback('Open a YouTube/Instagram tab to preview.', 'error');
-      return;
-    }
     try {
-      await chrome.tabs.sendMessage(tab.id, { action: 'preview' });
-      showFeedback('Reminder preview triggered.', 'success');
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.id) {
+        showFeedback('Open a YouTube/Instagram tab to preview.', 'error');
+        return;
+      }
+      try {
+        await chrome.tabs.sendMessage(tab.id, { action: 'preview' });
+        showFeedback('Reminder preview triggered.', 'success');
+      } catch (e) {
+        showFeedback('Preview only works on YouTube/Instagram tabs.', 'error');
+      }
     } catch (e) {
-      showFeedback('Preview only works on YouTube/Instagram tabs.', 'error');
+      captureError('options.previewBtn', e);
+    }
+  });
+
+  fields.clearError.addEventListener('click', async () => {
+    try {
+      await chrome.storage.local.remove('lastError');
+      fields.errorReport.classList.add('hidden');
+    } catch (e) {
+      captureError('options.clearError', e);
     }
   });
 
   loadSettings();
+  renderErrorReport();
 })();

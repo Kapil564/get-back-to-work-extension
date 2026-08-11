@@ -6,13 +6,13 @@
     intervalMinutes: 15,
     headline: 'GET BACK TO WORK!',
     volume: 1.0,
-    audioMode: 'default', // 'default' | 'url' | 'upload'
+    audioMode: 'default',
     audioUrl: '',
-    audioData: '', // base64
-    visualMode: 'default', // 'default' (text only) | 'url' | 'upload'
+    audioData: '',
+    visualMode: 'default',
     visualUrl: '',
-    visualData: '', // base64
-    visualKind: 'video', // 'video' | 'gif'
+    visualData: '',
+    visualKind: 'video',
   };
 
   const SECOND = 1000;
@@ -27,16 +27,43 @@
   let timerId = null;
   let snoozeUntil = 0;
 
+  // --- error reporting helper ---
+
+  function captureError(context, err) {
+    try {
+      const payload = {
+        lastError: {
+          context,
+          message: err && err.message ? err.message : String(err),
+          stack: err && err.stack ? err.stack : '',
+          url: typeof location !== 'undefined' ? location.href : '',
+          time: Date.now(),
+        },
+      };
+      chrome.storage.local.set(payload).catch(() => {});
+    } catch (_) {
+      // ignore
+    }
+  }
+
   // --- storage helpers ---
 
   async function loadSettings() {
-    const res = await chrome.storage.local.get(DEFAULTS);
-    settings = { ...DEFAULTS, ...res };
+    try {
+      const res = await chrome.storage.local.get(DEFAULTS);
+      settings = { ...DEFAULTS, ...res };
+    } catch (e) {
+      captureError('content.loadSettings', e);
+    }
   }
 
   async function saveSettings(patch) {
-    settings = { ...settings, ...patch };
-    await chrome.storage.local.set(patch);
+    try {
+      settings = { ...settings, ...patch };
+      await chrome.storage.local.set(patch);
+    } catch (e) {
+      captureError('content.saveSettings', e);
+    }
   }
 
   // --- detection ---
@@ -50,9 +77,8 @@
     return getVideos().some((v) => {
       if (v.paused) return false;
       if (v.ended) return false;
-      if (v.readyState < 2) return false; // HAVE_CURRENT_DATA
+      if (v.readyState < 2) return false;
       if (v.muted && v.volume === 0) return false;
-      // ignore tiny clips/ads if currentTime not moving
       return !!(v.currentTime > 0 && !v.paused);
     });
   }
@@ -266,160 +292,163 @@
   }
 
   async function startReminder() {
-    if (overlay) return;
+    try {
+      if (overlay) return;
 
-    pauseAllVideos();
-    createOverlay();
+      pauseAllVideos();
+      createOverlay();
 
-    // --- Audio: deferred until user gesture due to autoplay policies ---
-    alarmAudio = new Audio(buildAudioUrl());
-    alarmAudio.loop = true;
-    alarmAudio.volume = Math.min(1, Math.max(0, settings.volume));
+      alarmAudio = new Audio(buildAudioUrl());
+      alarmAudio.loop = true;
+      alarmAudio.volume = Math.min(1, Math.max(0, settings.volume));
 
-    function tryPlayAudio() {
-      if (!alarmAudio || !overlay) return;
-      const p = alarmAudio.play();
-      if (p && typeof p.catch === 'function') {
-        p.catch((err) => {
-          console.warn('GetBackToWork: audio play blocked; using silent visual fallback.', err);
-        });
-      }
-    }
-
-    // Modern browsers (and Brave Shields) block autoplay without a user gesture.
-    // Try anyway in case the user already interacted with the page, but show a
-    // sound-on-demand button as the reliable path.
-    tryPlayAudio();
-
-    // --- Sound-on-demand button (works around autoplay blocks) ---
-    const card = overlay.querySelector('div');
-    if (card) {
-      const soundBtn = document.createElement('button');
-      soundBtn.textContent = '🔊 Sound the alarm';
-      soundBtn.id = 'gbw-sound-btn';
-      soundBtn.setAttribute(
-        'style',
-        [
-          'margin-top:1rem',
-          'padding:0.75rem 1.25rem',
-          'font-size:1rem',
-          'font-weight:700',
-          'border:none',
-          'border-radius:12px',
-          'cursor:pointer',
-          'background:#ffeb3b',
-          'color:#000',
-          'box-shadow:0 4px 0 #bfa600',
-          'transition:transform .05s, box-shadow .05s',
-        ].join(';')
-      );
-      soundBtn.addEventListener('click', () => {
-        tryPlayAudio();
-        soundBtn.style.display = 'none';
-      });
-      soundBtn.addEventListener('mousedown', () => {
-        soundBtn.style.transform = 'translateY(3px)';
-        soundBtn.style.boxShadow = '0 1px 0 #bfa600';
-      });
-      soundBtn.addEventListener('mouseup', () => {
-        soundBtn.style.transform = 'translateY(0)';
-        soundBtn.style.boxShadow = '0 4px 0 #bfa600';
-      });
-      card.appendChild(soundBtn);
-    }
-
-    // Global quick gesture: first click/press anywhere in overlay also starts sound.
-    overlay.addEventListener('pointerdown', function unlockAudio() {
-      tryPlayAudio();
-      overlay.removeEventListener('pointerdown', unlockAudio);
-    }, { once: true });
-
-    // Visual
-    const visualData = buildVisualData();
-    const container = document.getElementById('gbw-visual');
-    if (container && visualData) {
-      container.innerHTML = '';
-      if (settings.visualKind === 'gif') {
-        const img = document.createElement('img');
-        img.src = visualData;
-        img.alt = 'Reminder visual';
-        container.appendChild(img);
-      } else {
-        const video = document.createElement('video');
-        video.src = visualData;
-        video.loop = true;
-        video.autoplay = true;
-        video.muted = false;
-        video.playsInline = true;
-        video.setAttribute('playsinline', '');
-        video.volume = Math.min(1, Math.max(0, settings.volume));
-        visualElement = video;
-        container.appendChild(video);
-        const vp = video.play();
-        if (vp && typeof vp.catch === 'function') {
-          vp.catch((err) => {
-            console.warn('GetBackToWork: reminder video autoplay blocked; fallback audio only.', err);
+      function tryPlayAudio() {
+        if (!alarmAudio || !overlay) return;
+        const p = alarmAudio.play();
+        if (p && typeof p.catch === 'function') {
+          p.catch((err) => {
+            console.warn('GetBackToWork: audio play blocked; using silent visual fallback.', err);
           });
         }
       }
-    }
 
-    // Ensure alarm keeps trying if it gets paused by browser policy
-    alarmAudio.addEventListener('pause', () => {
-      if (alarmAudio && overlay && !alarmAudio.ended && alarmAudio.currentTime > 0) {
-        alarmAudio.play().catch(() => {});
+      tryPlayAudio();
+
+      const card = overlay.querySelector('div');
+      if (card) {
+        const soundBtn = document.createElement('button');
+        soundBtn.textContent = '🔊 Sound the alarm';
+        soundBtn.id = 'gbw-sound-btn';
+        soundBtn.setAttribute(
+          'style',
+          [
+            'margin-top:1rem',
+            'padding:0.75rem 1.25rem',
+            'font-size:1rem',
+            'font-weight:700',
+            'border:none',
+            'border-radius:12px',
+            'cursor:pointer',
+            'background:#ffeb3b',
+            'color:#000',
+            'box-shadow:0 4px 0 #bfa600',
+            'transition:transform .05s, box-shadow .05s',
+          ].join(';')
+        );
+        soundBtn.addEventListener('click', () => {
+          tryPlayAudio();
+          soundBtn.style.display = 'none';
+        });
+        soundBtn.addEventListener('mousedown', () => {
+          soundBtn.style.transform = 'translateY(3px)';
+          soundBtn.style.boxShadow = '0 1px 0 #bfa600';
+        });
+        soundBtn.addEventListener('mouseup', () => {
+          soundBtn.style.transform = 'translateY(0)';
+          soundBtn.style.boxShadow = '0 4px 0 #bfa600';
+        });
+        card.appendChild(soundBtn);
       }
-    });
+
+      overlay.addEventListener('pointerdown', function unlockAudio() {
+        tryPlayAudio();
+        overlay.removeEventListener('pointerdown', unlockAudio);
+      }, { once: true });
+
+      const visualData = buildVisualData();
+      const container = document.getElementById('gbw-visual');
+      if (container && visualData) {
+        container.innerHTML = '';
+        if (settings.visualKind === 'gif') {
+          const img = document.createElement('img');
+          img.src = visualData;
+          img.alt = 'Reminder visual';
+          container.appendChild(img);
+        } else {
+          const video = document.createElement('video');
+          video.src = visualData;
+          video.loop = true;
+          video.autoplay = true;
+          video.muted = false;
+          video.playsInline = true;
+          video.setAttribute('playsinline', '');
+          video.volume = Math.min(1, Math.max(0, settings.volume));
+          visualElement = video;
+          container.appendChild(video);
+          const vp = video.play();
+          if (vp && typeof vp.catch === 'function') {
+            vp.catch((err) => {
+              console.warn('GetBackToWork: reminder video autoplay blocked; fallback audio only.', err);
+            });
+          }
+        }
+      }
+
+      alarmAudio.addEventListener('pause', () => {
+        if (alarmAudio && overlay && !alarmAudio.ended && alarmAudio.currentTime > 0) {
+          alarmAudio.play().catch(() => {});
+        }
+      });
+    } catch (e) {
+      captureError('content.startReminder', e);
+    }
   }
 
   function dismissReminder(resetCounter) {
-    if (overlay) {
-      const parent = overlay.parentNode;
-      if (parent) parent.removeChild(overlay);
-      overlay = null;
-    }
-    if (alarmAudio) {
-      alarmAudio.pause();
-      alarmAudio.src = '';
-      alarmAudio = null;
-    }
-    if (visualElement) {
-      visualElement.pause();
-      visualElement.src = '';
-      visualElement = null;
-    }
-    if (resetCounter) {
-      watchingSeconds = 0;
-    } else {
-      // snooze
-      snoozeUntil = Date.now() + 5 * 60 * SECOND;
-      watchingSeconds = Math.max(0, watchingSeconds - 5 * 60); // don't accumulate the snooze backlog
+    try {
+      if (overlay) {
+        const parent = overlay.parentNode;
+        if (parent) parent.removeChild(overlay);
+        overlay = null;
+      }
+      if (alarmAudio) {
+        alarmAudio.pause();
+        alarmAudio.src = '';
+        alarmAudio = null;
+      }
+      if (visualElement) {
+        visualElement.pause();
+        visualElement.src = '';
+        visualElement = null;
+      }
+      if (resetCounter) {
+        watchingSeconds = 0;
+      } else {
+        snoozeUntil = Date.now() + 5 * 60 * SECOND;
+        watchingSeconds = Math.max(0, watchingSeconds - 5 * 60);
+      }
+    } catch (e) {
+      captureError('content.dismissReminder', e);
     }
   }
 
   // --- main loop ---
 
   function tick() {
-    if (!settings.enabled) {
-      isWatching = false;
-      return;
-    }
+    try {
+      if (!settings.enabled) {
+        isWatching = false;
+        return;
+      }
 
-    if (overlay) return; // reminder already showing
+      if (overlay) return;
 
-    if (Date.now() < snoozeUntil) return;
+      if (Date.now() < snoozeUntil) return;
 
-    const active = isAnyVideoPlaying();
-    if (active) {
-      isWatching = true;
-      watchingSeconds += 1;
-    } else {
-      isWatching = false;
-    }
+      const active = isAnyVideoPlaying();
+      if (active) {
+        isWatching = true;
+        watchingSeconds += 1;
+      } else {
+        isWatching = false;
+      }
 
-    const threshold = settings.intervalMinutes * 60;
-    if (watchingSeconds >= threshold) {
-      startReminder();
+      const threshold = settings.intervalMinutes * 60;
+      if (watchingSeconds >= threshold) {
+        startReminder();
+      }
+    } catch (e) {
+      captureError('content.tick', e);
     }
   }
 
@@ -432,32 +461,41 @@
   // --- external commands from popup/options ---
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (!message || !message.action) return false;
+    try {
+      if (!message || !message.action) return false;
 
-    switch (message.action) {
-      case 'preview':
-        startReminder();
-        sendResponse({ ok: true });
-        return false;
-      case 'dismiss':
-        dismissReminder(true);
-        sendResponse({ ok: true });
-        return false;
-      case 'ping':
-        sendResponse({ ok: true, watching: isWatching, seconds: watchingSeconds });
-        return false;
-      default:
-        return false;
+      switch (message.action) {
+        case 'preview':
+          startReminder();
+          sendResponse({ ok: true });
+          return false;
+        case 'dismiss':
+          dismissReminder(true);
+          sendResponse({ ok: true });
+          return false;
+        case 'ping':
+          sendResponse({ ok: true, watching: isWatching, seconds: watchingSeconds });
+          return false;
+        default:
+          return false;
+      }
+    } catch (e) {
+      captureError('content.onMessage', e);
+      return false;
     }
   });
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'local') return;
-    const patch = {};
-    Object.keys(changes).forEach((k) => {
-      patch[k] = changes[k].newValue;
-    });
-    settings = { ...settings, ...patch };
+    try {
+      if (area !== 'local') return;
+      const patch = {};
+      Object.keys(changes).forEach((k) => {
+        patch[k] = changes[k].newValue;
+      });
+      settings = { ...settings, ...patch };
+    } catch (e) {
+      captureError('content.storage.onChanged', e);
+    }
   });
 
   if (document.readyState === 'loading') {
