@@ -70,7 +70,7 @@
               <span class="label">Upload audio file</span>
               <input type="file" id="audioFile" accept="audio/*" />
               <span class="hint" id="audioFileName">No file selected</span>
-            </label>            
+            </label>
           </div>
         </section>
 
@@ -118,6 +118,16 @@
       </form>
 
       <div id="saveFeedback" class="feedback" role="status" aria-live="polite"></div>
+
+      <section id="errorReport" class="error-report hidden" role="alert">
+        <h2>⚠️ Last Error</h2>
+        <div class="error-summary" id="errorSummary"></div>
+        <div class="error-actions">
+          <a id="errorLink" class="btn btn-primary" target="_blank" href="#">Report on GitHub</a>
+          <button id="clearError" class="btn btn-secondary" type="button">Clear</button>
+        </div>
+        <p class="hint">Report any error on GitHub. I will fix it in a later version.</p>
+      </section>
     </div>
 
     <script src="options.js"></script>

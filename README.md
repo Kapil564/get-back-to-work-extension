@@ -109,6 +109,18 @@ Ideas for future versions:
 
 ---
 
+## Report an Error
+
+If the extension crashes or something behaves unexpectedly, the popup or settings page may show an error banner.
+
+1. Click the **"Report on GitHub"** button in the popup or settings.
+2. Review the prefilled details and submit the issue.
+3. **Report any error on GitHub — it will be fixed in a later version.**
+
+No analytics or remote logging is used, so a GitHub issue is the best way to help improve the extension.
+
+---
+
 ## Notes
 
 - **Brave users**: autoplay/audio policies can vary depending on Shields settings. If custom audio/video doesn't auto-play, the bundled siren will try to play as a fallback.

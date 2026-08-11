@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Get Back To Work",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Detect video watching on YouTube/Instagram and interrupt with a loud reminder.",
   "permissions": ["storage", "unlimitedStorage", "activeTab"],
   "host_permissions": [
