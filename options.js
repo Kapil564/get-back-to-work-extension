@@ -148,7 +148,7 @@
   });
 
   fields.previewBtn.addEventListener('click', async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (!tab || !tab.id) {
       showFeedback('Open a YouTube/Instagram tab to preview.', 'error');
       return;
@@ -157,7 +157,7 @@
       await chrome.tabs.sendMessage(tab.id, { action: 'preview' });
       showFeedback('Reminder preview triggered.', 'success');
     } catch (e) {
-      showFeedback('Preview only works on YouTube/Instagram tabs.', 'error');
+      showFeedback('Preview only works on active YouTube/Instagram tabs.', 'error');
     }
   });
 
