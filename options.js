@@ -215,20 +215,10 @@
   });
 
   fields.previewBtn.addEventListener('click', async () => {
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab || !tab.id) {
-        showFeedback('Open a YouTube/Instagram tab to preview.', 'error');
-        return;
-      }
-      try {
-        await chrome.tabs.sendMessage(tab.id, { action: 'preview' });
-        showFeedback('Reminder preview triggered.', 'success');
-      } catch (e) {
-        showFeedback('Preview only works on YouTube/Instagram tabs.', 'error');
-      }
-    } catch (e) {
-      captureError('options.previewBtn', e);
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!tab || !tab.id) {
+      showFeedback('Open a YouTube/Instagram tab to preview.', 'error');
+      return;
     }
   });
 
@@ -237,7 +227,7 @@
       await chrome.storage.local.remove('lastError');
       fields.errorReport.classList.add('hidden');
     } catch (e) {
-      captureError('options.clearError', e);
+      showFeedback('Preview only works on active YouTube/Instagram tabs.', 'error');
     }
   });
 
