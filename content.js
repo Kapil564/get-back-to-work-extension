@@ -27,16 +27,43 @@
   let timerId = null;
   let snoozeUntil = 0;
 
+  // --- error reporting helper ---
+
+  function captureError(context, err) {
+    try {
+      const payload = {
+        lastError: {
+          context,
+          message: err && err.message ? err.message : String(err),
+          stack: err && err.stack ? err.stack : '',
+          url: typeof location !== 'undefined' ? location.href : '',
+          time: Date.now(),
+        },
+      };
+      chrome.storage.local.set(payload).catch(() => {});
+    } catch (_) {
+      // ignore
+    }
+  }
+
   // --- storage helpers ---
 
   async function loadSettings() {
-    const res = await chrome.storage.local.get(DEFAULTS);
-    settings = { ...DEFAULTS, ...res };
+    try {
+      const res = await chrome.storage.local.get(DEFAULTS);
+      settings = { ...DEFAULTS, ...res };
+    } catch (e) {
+      captureError('content.loadSettings', e);
+    }
   }
 
   async function saveSettings(patch) {
-    settings = { ...settings, ...patch };
-    await chrome.storage.local.set(patch);
+    try {
+      settings = { ...settings, ...patch };
+      await chrome.storage.local.set(patch);
+    } catch (e) {
+      captureError('content.saveSettings', e);
+    }
   }
 
   // --- detection ---
@@ -287,7 +314,6 @@
           err,
         );
       }
-    }
 
     alarmAudio.addEventListener("error", () => {
       if (!alarmAudio) return;
@@ -385,7 +411,6 @@
           });
         }
       }
-    }
 
     // Ensure alarm keeps trying if it gets paused by browser policy
     alarmAudio.addEventListener("pause", () => {
@@ -428,26 +453,30 @@
   // --- main loop ---
 
   function tick() {
-    if (!settings.enabled) {
-      isWatching = false;
-      return;
-    }
+    try {
+      if (!settings.enabled) {
+        isWatching = false;
+        return;
+      }
 
-    if (overlay) return; // reminder already showing
+      if (overlay) return;
 
-    if (Date.now() < snoozeUntil) return;
+      if (Date.now() < snoozeUntil) return;
 
-    const active = isAnyVideoPlaying();
-    if (active) {
-      isWatching = true;
-      watchingSeconds += 1;
-    } else {
-      isWatching = false;
-    }
+      const active = isAnyVideoPlaying();
+      if (active) {
+        isWatching = true;
+        watchingSeconds += 1;
+      } else {
+        isWatching = false;
+      }
 
-    const threshold = settings.intervalMinutes * 60;
-    if (watchingSeconds >= threshold) {
-      startReminder();
+      const threshold = settings.intervalMinutes * 60;
+      if (watchingSeconds >= threshold) {
+        startReminder();
+      }
+    } catch (e) {
+      captureError('content.tick', e);
     }
   }
 

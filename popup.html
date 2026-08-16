@@ -25,6 +25,15 @@
         <a href="options.html" target="_blank" class="btn btn-secondary">Open Settings</a>
         <button id="previewBtn" class="btn btn-primary">Preview Reminder</button>
       </div>
+
+      <div id="errorReport" class="error-report hidden" role="alert">
+        <div class="error-title">⚠️ Something went wrong</div>
+        <div class="error-summary" id="errorSummary"></div>
+        <div class="error-actions">
+          <a id="errorLink" class="btn btn-primary" target="_blank" href="#">Report on GitHub</a>
+          <button id="clearError" class="btn btn-secondary" type="button">Clear</button>
+        </div>
+      </div>
     </div>
 
     <script src="popup.js"></script>

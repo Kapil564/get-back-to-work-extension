@@ -303,3 +303,37 @@ select:focus {
     flex-direction: column;
   }
 }
+
+/* Error report card */
+.error-report {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(255, 59, 59, 0.12);
+  border: 1px solid rgba(255, 59, 59, 0.35);
+  border-radius: 12px;
+}
+
+.error-report .error-title {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.error-report .error-summary {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  word-break: break-word;
+}
+
+.error-report .error-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.error-report .hint {
+  margin-top: 0.6rem;
+}
