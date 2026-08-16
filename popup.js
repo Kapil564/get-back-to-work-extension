@@ -52,6 +52,40 @@
       : 'Monitoring is paused — your break is safe. 🏖️';
   }
 
+  function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}m ${s.toString().padStart(2, '0')}s`;
+  }
+
+  async function refreshStats() {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const timerText = document.getElementById('timerText');
+      const eduText = document.getElementById('eduText');
+      const res = tab?.id ? await chrome.tabs.sendMessage(tab.id, { action: 'ping' }) : null;
+      if (res) {
+        timerText.textContent = `Watch time: ${formatTime(res.seconds)}`;
+        if (res.alarmActive) {
+          statusText.textContent = '🚨 Alarm is active — YouTube locked until dismissed.';
+          statusText.style.color = '#ff6b6b';
+        } else if (res.isEducational) {
+          eduText.textContent = '📚 Educational video detected — not counting down.';
+          eduText.style.color = '#74c0fc';
+        } else if (res.eduAllowanceExceeded) {
+          eduText.textContent = `Daily educational allowance used (${formatTime(res.educationalSeconds)}).`;
+        } else {
+          eduText.textContent = '';
+        }
+      } else {
+        if (timerText) timerText.textContent = '';
+        if (eduText) eduText.textContent = '';
+      }
+    } catch (e) {
+      captureError('popup.refreshStats', e);
+    }
+  }
+
   function buildIssueUrl(err) {
     const title = encodeURIComponent(`[Bug] ${err.context}: ${err.message}`);
     const bodyLines = [
@@ -126,4 +160,5 @@
 
   loadEnabled();
   renderErrorReport();
+  refreshStats().catch((e) => captureError('popup.init', e));
 })();

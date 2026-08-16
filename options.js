@@ -13,6 +13,11 @@
     visualUrl: '',
     visualData: '',
     visualKind: 'video',
+    educationalMode: false,
+    educationalKeywords:
+      'khan,freecodecamp,crashcourse,3blue1brown,mit,stanford,harvard,edx,coursera,udemy,lecture,tutorial,course,learn,how to,explain,education',
+    educationalAllowMinutes: 30,
+    hardBlockOnAlarm: true,
   };
 
   const REPO_URL = 'https://github.com/Kapil564/get-back-to-work-extension';
@@ -23,6 +28,10 @@
     headline: document.getElementById('headline'),
     volume: document.getElementById('volume'),
     volumeValue: document.getElementById('volumeValue'),
+    hardBlockOnAlarm: document.getElementById('hardBlockOnAlarm'),
+    educationalMode: document.getElementById('educationalMode'),
+    educationalKeywords: document.getElementById('educationalKeywords'),
+    educationalAllowMinutes: document.getElementById('educationalAllowMinutes'),
     audioMode: document.getElementById('audioMode'),
     audioUrl: document.getElementById('audioUrl'),
     audioFile: document.getElementById('audioFile'),
@@ -118,6 +127,11 @@
       fields.headline.value = s.headline;
       fields.volume.value = s.volume;
       fields.volumeValue.textContent = `${Math.round(s.volume * 100)}%`;
+      fields.hardBlockOnAlarm.checked = s.hardBlockOnAlarm;
+
+      fields.educationalMode.checked = s.educationalMode;
+      fields.educationalKeywords.value = s.educationalKeywords;
+      fields.educationalAllowMinutes.value = s.educationalAllowMinutes;
 
       fields.audioMode.value = s.audioMode;
       fields.audioUrl.value = s.audioUrl || '';
@@ -169,6 +183,10 @@
         audioMode: fields.audioMode.value,
         visualMode: fields.visualMode.value,
         visualKind: fields.visualKind.value,
+        hardBlockOnAlarm: fields.hardBlockOnAlarm.checked,
+        educationalMode: fields.educationalMode.checked,
+        educationalKeywords: fields.educationalKeywords.value,
+        educationalAllowMinutes: Math.max(0, Math.min(240, parseInt(fields.educationalAllowMinutes.value, 10) || 0)),
       };
 
       if (payload.audioMode === 'url') {
@@ -205,9 +223,6 @@
 
       await chrome.storage.local.set(payload);
       showFeedback('Settings saved.', 'success');
-
-      fields.audioFileName.textContent = payload.audioData ? 'File stored in extension storage' : 'No file selected';
-      fields.visualFileName.textContent = payload.visualData ? 'File stored in extension storage' : 'No file selected';
     } catch (e) {
       captureError('options.form.submit', e);
       showFeedback('Failed to save settings.', 'error');

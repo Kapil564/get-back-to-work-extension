@@ -43,6 +43,34 @@
             <input type="range" id="volume" min="0" max="1" step="0.05" />
             <span class="hint" id="volumeValue">100%</span>
           </label>
+
+          <label class="field">
+            <span class="label">Hard block after alarm</span>
+            <input type="checkbox" id="hardBlockOnAlarm" />
+            <span class="hint">Once the alarm fires, keep showing the blocker on every YouTube/Instagram watch page until you click "I'm back to work".</span>
+          </label>
+        </section>
+
+        <section>
+          <h2>Educational Video Bypass</h2>
+          <p class="hint">Allow study/tutorial content without it counting toward your binge timer.</p>
+
+          <label class="field">
+            <span class="label">Enable educational bypass</span>
+            <input type="checkbox" id="educationalMode" />
+          </label>
+
+          <label class="field">
+            <span class="label">Educational keywords</span>
+            <textarea id="educationalKeywords" rows="3" class="field-textarea"></textarea>
+            <span class="hint">Comma-separated keywords matched against title, description, channel name, and category.</span>
+          </label>
+
+          <label class="field">
+            <span class="label">Daily educational allowance (minutes)</span>
+            <input type="number" id="educationalAllowMinutes" min="0" max="240" />
+            <span class="hint">Set to 0 for unlimited educational content.</span>
+          </label>
         </section>
 
         <section>
