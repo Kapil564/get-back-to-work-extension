@@ -63,7 +63,28 @@
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       const timerText = document.getElementById('timerText');
       const eduText = document.getElementById('eduText');
-      const res = tab?.id ? await chrome.tabs.sendMessage(tab.id, { action: 'ping' }) : null;
+
+      if (!tab?.id) {
+        if (timerText) timerText.textContent = '';
+        if (eduText) eduText.textContent = '';
+        return;
+      }
+
+      // Only ping watch pages; avoids 'receiving end does not exist' on unrelated tabs.
+      const url = tab.url ? new URL(tab.url) : null;
+      const isWatchPage = url && (
+        (url.hostname.endsWith('youtube.com') &&
+          (url.pathname.startsWith('/watch') || url.pathname.startsWith('/shorts'))) ||
+        (url.hostname.endsWith('instagram.com') && url.pathname.startsWith('/reel'))
+      );
+
+      if (!isWatchPage) {
+        if (timerText) timerText.textContent = '';
+        if (eduText) eduText.textContent = '';
+        return;
+      }
+
+      const res = await chrome.tabs.sendMessage(tab.id, { action: 'ping' }).catch(() => null);
       if (res) {
         timerText.textContent = `Watch time: ${formatTime(res.seconds)}`;
         if (res.alarmActive) {
@@ -136,16 +157,23 @@
   previewBtn.addEventListener('click', async () => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tab && tab.id) {
-        try {
-          await chrome.tabs.sendMessage(tab.id, { action: 'preview' });
-          window.close();
-        } catch (e) {
-          statusText.textContent = 'Preview only works on YouTube/Instagram tabs.';
-        }
+      if (!tab?.id) return;
+
+      const url = tab.url ? new URL(tab.url) : null;
+      const isWatchPage = url && (
+        (url.hostname.endsWith('youtube.com') &&
+          (url.pathname.startsWith('/watch') || url.pathname.startsWith('/shorts'))) ||
+        (url.hostname.endsWith('instagram.com') && url.pathname.startsWith('/reel'))
+      );
+      if (!isWatchPage) {
+        statusText.textContent = 'Preview only works on YouTube/Instagram watch pages.';
+        return;
       }
+
+      await chrome.tabs.sendMessage(tab.id, { action: 'preview' });
+      window.close();
     } catch (e) {
-      captureError('popup.previewBtn', e);
+      statusText.textContent = 'Preview only works on YouTube/Instagram tabs.';
     }
   });
 

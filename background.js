@@ -33,10 +33,14 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   const url = new URL(tab.url);
   const { alarmActive } = await chrome.storage.local.get({ alarmActive: false });
   if (alarmActive && isWatchUrl(url.hostname, url.pathname)) {
-    try {
-      await chrome.tabs.sendMessage(tabId, { action: 'forceOverlay' });
-    } catch (_e) {
-      // content script may not be loaded
+    // Retry injection a few times to avoid race conditions with content script load.
+    for (let i = 0; i < 5; i++) {
+      try {
+        await chrome.tabs.sendMessage(tabId, { action: 'forceOverlay' });
+        return;
+      } catch (_e) {
+        await new Promise((r) => setTimeout(r, 250));
+      }
     }
   }
 });
