@@ -86,17 +86,19 @@
 
       const res = await chrome.tabs.sendMessage(tab.id, { action: 'ping' }).catch(() => null);
       if (res) {
-        timerText.textContent = `Watch time: ${formatTime(res.seconds)}`;
         if (res.alarmActive) {
           statusText.textContent = '🚨 Alarm is active — YouTube locked until dismissed.';
           statusText.style.color = '#ff6b6b';
-        } else if (res.isEducational) {
-          eduText.textContent = '📚 Educational video detected — not counting down.';
-          eduText.style.color = '#74c0fc';
-        } else if (res.eduAllowanceExceeded) {
-          eduText.textContent = `Daily educational allowance used (${formatTime(res.educationalSeconds)}).`;
         } else {
-          eduText.textContent = '';
+          timerText.textContent = `Watch time: ${formatTime(res.seconds)}`;
+          if (res.isEducational) {
+            eduText.textContent = '📚 Educational video detected — not counting down.';
+            eduText.style.color = '#74c0fc';
+          } else if (res.eduAllowanceExceeded) {
+            eduText.textContent = `Daily educational allowance used (${formatTime(res.educationalSeconds)}).`;
+          } else {
+            eduText.textContent = '';
+          }
         }
       } else {
         if (timerText) timerText.textContent = '';

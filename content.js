@@ -13,10 +13,10 @@
     visualUrl: "",
     visualData: "", // base64
     visualKind: "video", // 'video' | 'gif'
-    educationalMode: false,
+    educationalMode: true,
     educationalKeywords:
-      "khan,freecodecamp,crashcourse,3blue1brown,mit,stanford,harvard,edx,coursera,udemy,lecture,tutorial,course,learn,how to,explain,education",
-    educationalAllowMinutes: 30,
+      "khan academy,freecodecamp,crashcourse,3blue1brown,mit,stanford,harvard,edx,coursera,udemy,lecture,tutorial,course,learn,how to,how-to,explain,explained,educational,education,science,maths,mathematics,coding,programming,dsa,data structures,algorithm,project,test prep,gate,jee,neet",
+    educationalAllowMinutes: 45,
     hardBlockOnAlarm: true,
   };
 
@@ -130,30 +130,67 @@
   }
 
   function getPageText() {
-    const title = document.title || "";
-    const description =
-      document.querySelector('meta[name="description"]')?.content ||
-      document.querySelector('meta[property="og:description"]')?.content ||
-      "";
-    const h1 = document.querySelector("h1")?.textContent || "";
-    return `${title} ${h1} ${description}`.toLowerCase();
+    const selectors = [
+      'h1.title.ytd-video-primary-info-renderer',
+      'h1.ytd-watch-metadata',
+      'yt-formatted-string.style-scope.ytd-watch-metadata',
+      'ytd-video-primary-info-renderer yt-formatted-string',
+      'ytd-watch-metadata yt-formatted-string',
+      '#title h1',
+      'h1',
+      'meta[name="description"]',
+      'meta[property="og:description"]',
+      'meta[property="og:title"]',
+    ];
+    const parts = [document.title || ''];
+    selectors.forEach((sel) => {
+      const el = document.querySelector(sel);
+      if (el) {
+        const text = el.tagName === 'META' ? el.content : el.textContent;
+        if (text) parts.push(text.trim());
+      }
+    });
+    return parts.join(' ').toLowerCase();
+  }
+
+  function getDescriptionText() {
+    const selectors = [
+      '#description-inline-expander',
+      '#description .ytd-text-inline-expander',
+      'ytd-text-inline-expander',
+      'ytd-metadata-row-container-renderer',
+      '#meta-contents',
+      'meta[name="description"]',
+    ];
+    const parts = [];
+    selectors.forEach((sel) => {
+      const el = document.querySelector(sel);
+      if (el) {
+        const text = el.tagName === 'META' ? el.content : el.textContent;
+        if (text) parts.push(text.trim());
+      }
+    });
+    return parts.join(' ').toLowerCase();
   }
 
   function getYouTubeCategoryKeywords() {
     const texts = [].concat(
-      ...Array.from(document.querySelectorAll('a, span, meta')).map((el) => {
-        if (el.tagName === "META") return el.content || "";
-        return el.textContent?.trim() || "";
+      ...Array.from(document.querySelectorAll('a, span, meta, yt-formatted-string')).map((el) => {
+        if (el.tagName === 'META') return el.content || '';
+        return el.textContent?.trim() || '';
       })
     );
-    return texts.slice(0, 30).join(" ").toLowerCase();
+    return texts.slice(0, 100).join(' ').toLowerCase();
   }
 
   function getChannelName() {
     const selectors = [
-      "#text.ytd-channel-name a",
-      "#upload-info ytd-channel-name a",
-      "ytd-channel-name a",
+      '#text.ytd-channel-name a',
+      '#upload-info ytd-channel-name a',
+      'ytd-channel-name a',
+      '#channel-name a',
+      'a.yt-formatted-string[href^="/@"]',
+      'a[href^="/@"]',
       '[href^="/@"]',
       'a[href*="/channel/"]',
     ];
@@ -161,24 +198,25 @@
       const el = document.querySelector(sel);
       if (el?.textContent?.trim()) return el.textContent.trim().toLowerCase();
     }
-    return "";
+    return '';
   }
 
   function isEducationalVideo() {
     if (!settings.educationalMode) return false;
 
-    const keywords = settings.educationalKeywords
-      .split(",")
+    const rawKeywords = settings.educationalKeywords
+      .split(/[,;\n]+/)
       .map((k) => k.trim().toLowerCase())
       .filter(Boolean);
-    if (keywords.length === 0) return false;
+    if (rawKeywords.length === 0) return false;
 
     const pageText = getPageText();
+    const descriptionText = getDescriptionText();
     const channel = getChannelName();
     const categoryTexts = getYouTubeCategoryKeywords();
-    const combined = `${pageText} ${channel} ${categoryTexts}`;
+    const combined = `${pageText} ${descriptionText} ${channel} ${categoryTexts}`;
 
-    const matchesKeyword = keywords.some((kw) => combined.includes(kw));
+    const matchesKeyword = rawKeywords.some((kw) => combined.includes(kw));
 
     let isEducationCategory = false;
     try {

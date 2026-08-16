@@ -13,10 +13,10 @@
     visualUrl: '',
     visualData: '',
     visualKind: 'video',
-    educationalMode: false,
+    educationalMode: true,
     educationalKeywords:
-      'khan,freecodecamp,crashcourse,3blue1brown,mit,stanford,harvard,edx,coursera,udemy,lecture,tutorial,course,learn,how to,explain,education',
-    educationalAllowMinutes: 30,
+      'khan academy,freecodecamp,crashcourse,3blue1brown,mit,stanford,harvard,edx,coursera,udemy,lecture,tutorial,course,learn,how to,how-to,explain,explained,educational,education,science,maths,mathematics,coding,programming,dsa,data structures,algorithm,project,test prep,gate,jee,neet',
+    educationalAllowMinutes: 45,
     hardBlockOnAlarm: true,
   };
 
