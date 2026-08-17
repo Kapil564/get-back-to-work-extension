@@ -46,6 +46,8 @@ I lost motivation easily and started slipping into long YouTube/Instagram binges
 To test the reminder immediately, click the extension icon and press **"Preview Reminder"** while on YouTube or Instagram.
 
 ---
+<img width="1902" height="912" alt="Screenshot 2026-08-17 165204" src="https://github.com/user-attachments/assets/77bcfbd0-d2b6-433d-9c05-9ab5018319c7" />
+
 
 ## Settings
 
